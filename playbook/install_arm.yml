@@ -1,0 +1,76 @@
+---
+- name: Install ros
+  hosts: localhost, all
+  connection: local
+  gather_facts: true
+  vars:
+    workspace_path: ~/stummelws/
+  tasks:
+  - name: set up ros keys
+    become: true
+    apt_key:
+      keyserver: ha.pool.sks-keyservers.net
+      id: '0xab17c654'
+  - name: "Add apt repository for ros"
+    become: true
+    apt_repository:
+      repo: 'deb http://packages.ros.org/ros/ubuntu bionic main'
+      filename: 'ros-latest'
+      update_cache: yes
+  - name: upgrade system
+    become: true
+    apt:
+      upgrade: 'yes'
+  - name: make shure all required packages are installed
+    become: 'true'
+    apt:
+      name:
+      - git
+      - ros-melodic-desktop-full 
+      - ros-melodic-actionlib 
+      - ros-melodic-ar-track-alvar 
+      - ros-melodic-base-local-planner 
+      - ros-melodic-catkin 
+      - ros-melodic-freenect-launch 
+      - ros-melodic-openni-launch 
+      - ros-melodic-gazebo-ros 
+      - ros-melodic-gazebo-plugins
+      - ros-melodic-moveit-ros
+      - ros-melodic-trac-ik-kinematics-plugin
+      - ros-melodic-moveit-planners-ompl
+      - ros-melodic-moveit-fake-controller-manager
+      - ros-melodic-tf
+      state: latest
+
+  - name: make shure you have a workspace
+    file:
+      path:  ~/stummelws/src/
+      state: directory
+
+  - name: Init workspace if not present
+    shell: catkin init
+    args:
+      chdir: "{{ workspace_path }}"
+      creates: "{{ workspace_path }}devel/setup.bash"
+
+  - name: Clone Kinova-ros repository if not already present
+    git:
+      repo: https://github.com/dasys-lab/kinova-ros.git
+      clone: true
+      update: true
+      recursive: true
+      dest: ~/stummelws/src/kinova-ros/
+    
+  
+  - name: Clone common repository if not already present
+    git:
+      repo: https://github.com/JenniferBuehler/common-sensors.git
+      clone: true
+      update: false
+      dest: ~/stummelws/src/common-sensors/
+
+  - name: Build the workspace
+    command:
+      cmd: catkin build
+      chdir: "{{ workspace_path }}"
+    register: catkin
